@@ -4,7 +4,10 @@ import altair as alt
 
 from src.data import get_df
 
-st.set_page_config(layout="wide")
+st.set_page_config(
+    page_title="👥 Profili cliente",
+    layout="wide"
+)
 
 st.title("👥 CONOSCIAMO IL CLIENTE")
 st.caption("Qui trovi una lettura chiara dei tuoi clienti: chi sono, che valore hanno per Vita Sicura e come si comportano nel tempo. Usa questi profili per adattare il tuo approccio, capire su chi investire più tempo e costruire una relazione coerente con i bisogni reali dei tuoi clienti.")

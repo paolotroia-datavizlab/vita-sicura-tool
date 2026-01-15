@@ -8,7 +8,11 @@ from src.llm import ask_llm
 # -------------------------------------------------
 # PAGE CONFIG
 # -------------------------------------------------
-st.set_page_config(layout="wide")
+st.set_page_config(
+    page_title="🎯 Chi contattare adesso",
+    layout="wide"
+)
+
 st.title("🎯 CHI CONTATTARE ADESSO?")
 st.caption(
     "Indicazioni operative su quali clienti contattare e perché, combinando valore economico, "
@@ -223,24 +227,21 @@ if "chat_history" not in st.session_state:
 st.markdown("### ⚡ Come posso aiutarti ora?")
 st.caption("Seleziona un’azione rapida oppure scrivi una domanda personalizzata.")
 
-q1, q2, q3, q4 = st.columns(4)
+q1, q2 = st.columns(2)
 quick_prompt = None
 
 with q1:
-    if st.button("📞 Perché contattarlo"):
-        quick_prompt = "Perché è importante contattare questo cliente in questo momento?"
-
+    if st.button("📞 Prepara la chiamata"):
+        quick_prompt = (
+            "Preparami una sintesi operativa per la chiamata con questo cliente: "
+            "obiettivo, messaggio chiave e proposta da fare."
+        )
 with q2:
-    if st.button("🗣️ Aprire la chiamata"):
-        quick_prompt = "Come posso iniziare la chiamata in modo efficace con questo cliente?"
-
-with q3:
-    if st.button("🎯 Proposta consigliata"):
-        quick_prompt = "Qual è la proposta più adatta per questo cliente e perché?"
-
-with q4:
-    if st.button("⚠️ Attenzioni da avere"):
-        quick_prompt = "Ci sono aspetti critici o rischi da considerare durante la conversazione?"
+    if st.button("⚠️ Gestire il rischio"):
+        quick_prompt = (
+            "Quali sono i principali rischi o criticità da considerare "
+            "durante la conversazione con questo cliente?"
+        )
 
 # -------------------------------------------------
 # INPUT LIBERO
@@ -300,4 +301,4 @@ for role, msg in st.session_state.chat_history:
 # -------------------------------------------------
 if st.button("🔄 Reset conversazione"):
     st.session_state.chat_history = []
-    st.experimental_rerun()
+    st.rerun()

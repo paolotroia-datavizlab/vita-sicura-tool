@@ -4,7 +4,10 @@ import altair as alt
 
 from src.data import get_df
 
-st.set_page_config(layout="wide")
+st.set_page_config(
+    page_title="🗺️ Territorio prioritario",
+    layout="wide"
+)
 
 st.title("🗺️ Dove investire ora — Priorità territoriali")
 st.caption(
