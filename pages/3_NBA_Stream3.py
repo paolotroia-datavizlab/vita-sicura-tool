@@ -9,8 +9,12 @@ from src.llm import ask_llm
 # PAGE CONFIG
 # -------------------------------------------------
 st.set_page_config(layout="wide")
-st.title("🎯 Stream 3 — Next Best Action")
-st.caption("Supporto operativo al consulente per azioni prioritarie sui clienti")
+st.title("🎯 CHI CONTATTARE ADESSO?")
+st.caption(
+    "Indicazioni operative su quali clienti contattare e perché, combinando valore economico, "
+    "rischio di abbandono e opportunità commerciali. "
+    "I clienti a rischio churn hanno una probabilità stimata di abbandono ≥ 70%."
+)
 
 # -------------------------------------------------
 # LOAD DATA
@@ -55,17 +59,26 @@ if cliente_sel != "Tutti":
 # -------------------------------------------------
 c1, c2, c3, c4 = st.columns(4)
 
-c1.metric("CLIENTI", f"{len(df_ctx):,}")
-c2.metric("VALORE ATTESO MEDIO (€)", f"{df_ctx['valore_atteso_euro'].mean():,.0f}")
-c3.metric("PRIORITY SCORE MEDIO", f"{df_ctx['priority_score'].mean():.0f}")
-c4.metric("CLV MEDIO (€)", f"{df_ctx['clv_stimato'].mean():,.0f}")
+pct_rischio_churn = ((df_ctx["churn_score_model"] > 0.7).mean() * 100)
+
+c1.metric("**CLIENTI**", f"{len(df_ctx):,}")
+c2.metric("**VALORE ECONOMICO STIMATO (€)**", f"{df_ctx['valore_atteso_euro'].mean():,.0f} €")
+c3.metric("**CLIENTI A RISCHIO CHURN**", f"{pct_rischio_churn:.0f}%")
+c4.metric("**VALORE MEDIO CLIENTE (€)**", f"{df_ctx['clv_stimato'].mean():,.0f} €")
 
 st.markdown("---")
 
 # -------------------------------------------------
 # DISTRIBUZIONE NEXT BEST ACTION
 # -------------------------------------------------
-st.subheader("Distribuzione Next Best Action")
+st.markdown(
+    "<h3 style='text-align: center;'>Come si distribuiscono le azioni consigliate</h3>",
+    unsafe_allow_html=True
+)
+st.caption(
+    "La vista mostra quante volte ciascuna azione è consigliata e il valore economico medio associato, "
+    "per aiutare a capire dove si concentra l’impatto delle azioni suggerite."
+)
 
 action_dist = (
     df.groupby("next_best_action")
@@ -86,14 +99,27 @@ bar_vol = alt.Chart(action_dist).mark_bar().encode(
     tooltip=["next_best_action", "n_clienti"]
 ).properties(height=280)
 
+# Second bar chart for average economic value
 bar_val = alt.Chart(action_dist).mark_bar().encode(
-    y=alt.Y("next_best_action:N", sort="-x", title="Azione", axis=alt.Axis(labelLimit=300)),
+    y=alt.Y(
+        "next_best_action:N",
+        sort="-x",
+        title="Azione",
+        axis=alt.Axis(labelLimit=300)
+    ),
     x=alt.X(
         "valore_medio:Q",
-        title="Valore atteso medio per cliente (€)",
+        title="Valore economico stimato (€)",
         axis=alt.Axis(format=",.0f")
     ),
-    tooltip=["next_best_action", alt.Tooltip("valore_medio:Q", format=",.0f")]
+    tooltip=[
+        "next_best_action",
+        alt.Tooltip(
+            "valore_medio:Q",
+            format=",.0f",
+            title="Valore economico stimato (€)"
+        )
+    ]
 ).properties(height=280)
 
 c1, c2 = st.columns(2)
@@ -102,18 +128,16 @@ c2.altair_chart(bar_val, use_container_width=True)
 
 st.markdown("---")
 
+# ------------------------------------------------- # 
+# CLIENTI PRIORITARI 
 # -------------------------------------------------
-# CLIENTI PRIORITARI
-# -------------------------------------------------
-st.subheader("Clienti prioritari (vista consulente)")
+st.subheader("Clienti su cui agire ora")
 
 cols_show = [
     "cliente_label",
     "next_best_action",
-    "priority_score",
     "valore_atteso_euro",
     "churn_score_model",
-    "cross_sell_score",
     "engagement_score",
     "mesi_da_ultima_visita",
     "clv_stimato",
@@ -121,117 +145,159 @@ cols_show = [
 
 df_table = (
     df_ctx[cols_show]
-    .sort_values("priority_score", ascending=False)
+    .sort_values("valore_atteso_euro", ascending=False)
     .head(30)
+    .rename(columns={
+        "cliente_label": "Cliente",
+        "next_best_action": "Azione consigliata",
+        "valore_atteso_euro": "Valore economico stimato (€)",
+        "churn_score_model": "Rischio churn (%)",
+        "engagement_score": "Engagement (0–100)",
+        "mesi_da_ultima_visita": "Ultimo contatto (mesi)",
+        "clv_stimato": "Valore cliente (CLV €)",
+    })
+    .reset_index(drop=True)
 )
 
-st.dataframe(df_table, use_container_width=True, height=380)
+df_table["Rischio churn (%)"] = df_table["Rischio churn (%)"] * 100
+
+st.dataframe(
+    df_table.style.format({
+        "Valore economico stimato (€)": "€ {:,.0f}",
+        "Valore cliente (CLV €)": "€ {:,.0f}",
+        "Rischio churn (%)": "{:.0f} %",
+        "Engagement (0–100)": "{:.1f}",
+        "Ultimo contatto (mesi)": "{:.0f}",
+    }),
+    use_container_width=True,
+    height=380
+)
 
 st.markdown("---")
 
 # -------------------------------------------------
-# AI COPILOT — LLM EXPLANATION & ACTION LAYER
+# 🧠 VITA — CONSULENTE AI
 # -------------------------------------------------
-st.subheader("💬 AI Copilot — Supporto al consulente")
+st.markdown(
+    "<h2 style='text-align: center;'>🧠 Vita — Consulente AI</h2>",
+    unsafe_allow_html=True
+)
+st.caption(
+    "Supporto operativo per preparare la chiamata con il cliente selezionato. "
+    "Vita interpreta i dati disponibili e suggerisce come impostare la conversazione, "
+    "cosa proporre e quali aspetti gestire con attenzione."
+)
 
+# -------------------------------------------------
+# STATO VUOTO
+# -------------------------------------------------
 if cliente_sel == "Tutti" or df_ctx.empty:
-    st.info("Seleziona un cliente per attivare l’AI Copilot.")
+    st.info("Seleziona un cliente dalla tabella per attivare Vita, il tuo Consulente AI.")
     st.stop()
 
 row = df_ctx.iloc[0]
 
-# ---------- CONTESTO CLIENTE (CHIUSO E CHIARO)
-with st.expander("📌 Contesto cliente usato dall’AI", expanded=False):
+# -------------------------------------------------
+# RIEPILOGO CLIENTE (BASE DECISIONALE)
+# -------------------------------------------------
+with st.expander("📌 Riepilogo cliente (base decisionale)", expanded=False):
     st.markdown(f"""
     **Cliente:** {row['cliente_label']}  
-    **Azione suggerita:** {row['next_best_action']}  
-    **Priority score:** {row['priority_score']:.0f}  
-    **Valore atteso:** {row['valore_atteso_euro']:,.0f} €  
-    **Churn score:** {row['churn_score_model']:.2f}  
-    **Cross-sell score:** {row['cross_sell_score']:.2f}  
-    **CLV:** {row['clv_stimato']:,.0f} €  
-    **Engagement:** {row['engagement_score']:.1f}  
-    **Mesi da ultima visita:** {row['mesi_da_ultima_visita']}
+    **Azione consigliata:** {row['next_best_action']}  
+    **Valore economico stimato:** {row['valore_atteso_euro']:,.0f} €  
+    **Rischio di abbandono stimato:** {row['churn_score_model']*100:.0f}%  
+    **Valore cliente (CLV):** {row['clv_stimato']:,.0f} €  
+    **Livello di engagement:** {row['engagement_score']:.1f}/100  
+    **Ultimo contatto:** {row['mesi_da_ultima_visita']:.0f} mesi fa
     """)
 
-# ---------- STATO CHAT
+# -------------------------------------------------
+# STATO CHAT
+# -------------------------------------------------
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# ---------- AZIONI GUIDATE (UX KEY)
-st.markdown("### ⚡ Azioni rapide")
+# -------------------------------------------------
+# AZIONI GUIDATE
+# -------------------------------------------------
+st.markdown("### ⚡ Come posso aiutarti ora?")
+st.caption("Seleziona un’azione rapida oppure scrivi una domanda personalizzata.")
 
 q1, q2, q3, q4 = st.columns(4)
-
 quick_prompt = None
 
 with q1:
-    if st.button("📞 Perché chiamarlo"):
-        quick_prompt = "Perché questo cliente è prioritario?"
+    if st.button("📞 Perché contattarlo"):
+        quick_prompt = "Perché è importante contattare questo cliente in questo momento?"
 
 with q2:
-    if st.button("🗣️ Apri la chiamata"):
-        quick_prompt = "Come dovrei iniziare la conversazione?"
+    if st.button("🗣️ Aprire la chiamata"):
+        quick_prompt = "Come posso iniziare la chiamata in modo efficace con questo cliente?"
 
 with q3:
-    if st.button("🎯 Cosa proporre"):
-        quick_prompt = "Qual è la proposta più adatta?"
+    if st.button("🎯 Proposta consigliata"):
+        quick_prompt = "Qual è la proposta più adatta per questo cliente e perché?"
 
 with q4:
-    if st.button("⚠️ Cosa evitare"):
-        quick_prompt = "Cosa dovrei evitare con questo cliente?"
+    if st.button("⚠️ Attenzioni da avere"):
+        quick_prompt = "Ci sono aspetti critici o rischi da considerare durante la conversazione?"
 
-# ---------- INPUT LIBERO
+# -------------------------------------------------
+# INPUT LIBERO
+# -------------------------------------------------
 user_input = st.chat_input(
-    "Oppure scrivi una domanda personalizzata all’AI…"
+    "Scrivi una domanda specifica per preparare la chiamata…"
 )
 
 if quick_prompt:
     user_input = quick_prompt
 
-# ---------- CHIAMATA LLM
+# -------------------------------------------------
+# CHIAMATA LLM
+# -------------------------------------------------
 if user_input:
     st.session_state.chat_history.append(("user", user_input))
 
     prompt = f"""
-Sei un AI Copilot per consulenti assicurativi Generali.
+Agisci come un consulente senior di una compagnia assicurativa.
+
+Il tuo obiettivo è supportare un collega nella preparazione di una chiamata con un cliente,
+utilizzando esclusivamente le informazioni fornite di seguito.
 
 PROFILO CLIENTE:
-- Azione suggerita: {row['next_best_action']}
-- Priority score: {row['priority_score']:.0f}
-- Valore atteso: {row['valore_atteso_euro']:,.0f} €
-- Churn score: {row['churn_score_model']:.2f}
-- Cross-sell score: {row['cross_sell_score']:.2f}
-- CLV: {row['clv_stimato']:,.0f} €
-- Engagement: {row['engagement_score']:.1f}
-- Mesi da ultima visita: {row['mesi_da_ultima_visita']}
+- Azione consigliata: {row['next_best_action']}
+- Valore economico stimato: {row['valore_atteso_euro']:,.0f} €
+- Rischio di abbandono stimato: {row['churn_score_model']*100:.0f}%
+- Valore cliente (CLV): {row['clv_stimato']:,.0f} €
+- Livello di engagement: {row['engagement_score']:.1f}/100
+- Ultimo contatto: {row['mesi_da_ultima_visita']} mesi fa
 
-ISTRUZIONI:
-- Non ricalcolare i dati
-- Spiegare la logica decisionale
-- Dare suggerimenti concreti per una chiamata reale
-- Tono professionale, chiaro, pratico
-- Risposta max 8–10 righe
+LINEE GUIDA:
+- Non ricalcolare né stimare nuovi dati
+- Spiegare in modo chiaro il perché dell’azione suggerita
+- Fornire indicazioni pratiche e concrete per una chiamata reale
+- Linguaggio professionale, semplice, orientato all’azione
+- Lunghezza massima: 8–10 righe
 
-DOMANDA DEL CONSULENTE:
+DOMANDA:
 {user_input}
 """
 
-    with st.spinner("L’AI sta preparando la risposta…"):
+    with st.spinner("Vita sta preparando il supporto alla chiamata…"):
         ai_response = ask_llm(prompt)
 
     st.session_state.chat_history.append(("assistant", ai_response))
 
-# ---------- RENDER CHAT
+# -------------------------------------------------
+# RENDER CHAT
+# -------------------------------------------------
 for role, msg in st.session_state.chat_history:
     with st.chat_message(role):
         st.markdown(msg)
 
-# ---------- RESET
+# -------------------------------------------------
+# RESET
+# -------------------------------------------------
 if st.button("🔄 Reset conversazione"):
     st.session_state.chat_history = []
     st.experimental_rerun()
-
-
-
-

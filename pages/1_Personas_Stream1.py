@@ -6,8 +6,8 @@ from src.data import get_df
 
 st.set_page_config(layout="wide")
 
-st.title("👥 Stream 1 — Customer Personas")
-st.caption("Segmentazione clienti e profili comportamentali per supporto consulenziale")
+st.title("👥 CONOSCIAMO IL CLIENTE")
+st.caption("Qui trovi una lettura chiara dei tuoi clienti: chi sono, che valore hanno per Vita Sicura e come si comportano nel tempo. Usa questi profili per adattare il tuo approccio, capire su chi investire più tempo e costruire una relazione coerente con i bisogni reali dei tuoi clienti.")
 
 # -------------------------------------------------
 # LOAD DATA
@@ -37,8 +37,18 @@ def rename_for_display(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns={k: v for k, v in LABELS.items() if k in df.columns})
 
 # -------------------------------------------------
-# SIDEBAR FILTERS (consulente-friendly)
+# SIDEBAR FILTERS — consulente-first
 # -------------------------------------------------
+
+# 0) Crea subito la colonna (così df_ctx la eredita sempre)
+cluster_resp_map = {
+    "high_responder": "Alta",
+    "moderate_responder": "Media",
+    "low_responder": "Bassa"
+}
+df["probabilita_risposta"] = df["cluster_risposta"].map(cluster_resp_map)
+
+# 1) Cliente (focus singolo vs vista aggregata)
 df["cliente_label"] = (
     df["nome"].fillna("").astype(str).str.title() + " " +
     df["cognome"].fillna("").astype(str).str.title() +
@@ -48,7 +58,7 @@ df["cliente_label"] = (
 cliente_options = ["Tutti"] + sorted(df["cliente_label"].unique().tolist())
 
 cliente_sel = st.sidebar.selectbox(
-    "👤 **Cliente**",
+    "👤 Cliente",
     options=cliente_options,
     index=0
 )
@@ -61,43 +71,58 @@ else:
     df_ctx = df[df["codice_cliente"] == cliente_id].copy()
     cliente_row = df_ctx.iloc[0]
 
-# -------------------------------------------------
-cluster_resp_options = ["Tutte"] + sorted(df["cluster_risposta"].dropna().unique())
+st.sidebar.markdown("")
+
+# 2) Probabilità di risposta
+cluster_resp_options = ["Tutte", "Alta", "Media", "Bassa"]
+
 cluster_resp_sel = st.sidebar.selectbox(
-    "**Propensione**",
+    "📈 Probabilità di risposta",
     options=cluster_resp_options
 )
+
 if cluster_resp_sel == "Tutte":
-    cluster_resp_sel = df["cluster_risposta"].dropna().unique().tolist()
+    cluster_resp_sel = df["probabilita_risposta"].dropna().unique().tolist()
 else:
     cluster_resp_sel = [cluster_resp_sel]
 
-# -------------------------------------------------
+st.sidebar.markdown("")
+
+# 3) Area geografica
 zona_options = ["Tutte"] + sorted(df["zona_di_residenza"].dropna().unique())
+
 zona_sel = st.sidebar.selectbox(
-    "🏘️ **Zona di residenza**",
+    "🏘️ Area geografica",
     options=zona_options
 )
+
 if zona_sel == "Tutte":
     zona_sel = df["zona_di_residenza"].dropna().unique().tolist()
 else:
     zona_sel = [zona_sel]
 
-# --------------------------------------------------
-st.sidebar.markdown("🎭 **Persona**")
-persona_options = sorted(df["persona_label"].unique())
-persona_sel = [
-    p for p in persona_options
-    if st.sidebar.checkbox(p, value=True, key=f"persona_{p}")]
+st.sidebar.markdown("")
 
+# 4) Profilo cliente (Persona)
+persona_options = ["Tutti"] + sorted(df["persona_label"].dropna().unique())
+
+persona_sel = st.sidebar.selectbox(
+    "🎭 Profilo cliente",
+    options=persona_options,
+    index=0
+)
+
+if persona_sel == "Tutti":
+    persona_sel = df["persona_label"].dropna().unique().tolist()
+else:
+    persona_sel = [persona_sel]
 
 # -------------------------------------------------
-# APPLY FILTERS
+# APPLY FILTERS (cumulativi)
 # -------------------------------------------------
-# ===== Applicazione filtri cumulativi =====
 df_ctx = df_ctx[
     df_ctx["persona_label"].isin(persona_sel)
-    & df_ctx["cluster_risposta"].isin(cluster_resp_sel)
+    & df_ctx["probabilita_risposta"].isin(cluster_resp_sel)
     & df_ctx["zona_di_residenza"].isin(zona_sel)
 ]
 
@@ -107,7 +132,7 @@ df_ctx = df_ctx[
 c1, c2, c3, c4 = st.columns(4)
 
 c1.metric("**CLIENTI**", f"{len(df_ctx):,}")
-c2.metric("**CLV MEDIO**", f"{df_ctx['clv_stimato'].mean():,.0f} €")
+c2.metric("**VALORE MEDIO CLIENTE (€)**", f"{df_ctx['clv_stimato'].mean():,.0f} €")
 c3.metric("**ENGAGEMENT**", f"{df_ctx['engagement_score'].mean():.1f}")
 c4.metric("**RECLAMI MEDI**", f"{df_ctx['reclami_totali'].mean():.2f}")
 
@@ -116,7 +141,10 @@ st.markdown("---")
 # -------------------------------------------------
 # DISTRIBUZIONE PERSONAS + CLV MEDIO
 # -------------------------------------------------
-st.subheader("Distribuzione Personas")
+st.markdown(
+    "<h3 style='text-align: center;'>Dove sono i clienti e dove si genera valore</h3>",
+    unsafe_allow_html=True
+)
 
 # Distribuzione clienti per persona
 persona_dist = (
@@ -145,7 +173,7 @@ bar_dist = alt.Chart(persona_dist).mark_bar().encode(
     ),
     x=alt.X(
         "n_clienti:Q",
-        title="Numero clienti"
+        title="Clienti nel profilo"
     ),
     tooltip=["persona_label", "n_clienti"]
 ).properties(height=280)
@@ -159,7 +187,7 @@ bar_clv = alt.Chart(clv_persona).mark_bar().encode(
     ),
     x=alt.X(
         "clv_medio:Q",
-        title="CLV medio (€)",
+        title="Valore medio per cliente (€)",
         axis=alt.Axis(format=",.0f")
     ),
     tooltip=[
@@ -176,7 +204,7 @@ c2.altair_chart(bar_clv, use_container_width=True)
 # -------------------------------------------------
 # PROFILO MEDIO PER PERSONA
 # -------------------------------------------------
-st.subheader("Profilo medio per Persona")
+st.subheader("Come si comportano i diversi profili di clienti")
 
 profile_cols = [
     "clv_stimato",
@@ -194,17 +222,37 @@ profile = (
     .round(2)
 )
 
-st.dataframe(profile, use_container_width=True)
+profile_display = profile.rename(columns={
+    "clv_stimato": "Valore medio cliente (€)",
+    "potenziale_crescita": "Potenziale di crescita",
+    "engagement_score": "Engagement (0–100)",
+    "satisfaction_score": "Soddisfazione",
+    "reclami_totali": "Reclami medi",
+    "num_polizze_totali": "N° polizze medie"
+})
+
+profile_display = profile_display.rename_axis("Profilo cliente")
+
+profile_display = profile_display.style.format({
+    "Valore medio cliente (€)": "€ {:,.0f}",
+    "Potenziale di crescita": "{:.1f}",
+    "Engagement (0–100)": "{:.1f}",
+    "Soddisfazione": "{:.1f}",
+    "Reclami medi": "{:.2f}",
+    "N° polizze medie": "{:.1f}",
+})
+
+st.dataframe(profile_display, use_container_width=True)
 
 # -------------------------------------------------
 # TABELLA OPERATIVA CLIENTI
 # -------------------------------------------------
-st.subheader("Clienti (vista operativa)")
+st.subheader("Clienti con maggiore potenziale")
 
 cols_show = [
+    "codice_cliente",
     "nome",
     "cognome",
-    "codice_cliente",
     "persona_label",
     "cluster_risposta",
     "zona_di_residenza",
@@ -215,9 +263,27 @@ cols_show = [
     "reclami_totali",
 ]
 
-st.dataframe(
+df_table = (
     df_ctx[cols_show]
-    .sort_values("clv_stimato", ascending=False),
+    .sort_values("clv_stimato", ascending=False)
+    .rename(columns={
+        "codice_cliente": "ID Cliente",
+        "nome": "Nome",
+        "cognome": "Cognome",
+        "persona_label": "Profilo cliente",
+        "cluster_risposta": "Probabilità di risposta",
+        "zona_di_residenza": "Zona",
+        "clv_stimato": "Valore cliente (€)",
+        "potenziale_crescita": "Potenziale",
+        "engagement_score": "Engagement (0–100)",
+        "satisfaction_score": "Soddisfazione",
+        "reclami_totali": "Reclami"
+    })
+    .reset_index(drop=True)
+)
+
+st.dataframe(
+    df_table,
     use_container_width=True,
     height=420
 )
