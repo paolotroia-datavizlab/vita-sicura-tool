@@ -79,7 +79,7 @@ with left:
         """
     )
     st.page_link(
-        "pages/01_Profili cliente.py",
+        "pages/01_Profili_cliente.py",
         label="Vai ai Profili cliente",
         icon="👥"
     )
@@ -92,7 +92,7 @@ with left:
         """
     )
     st.page_link(
-        "pages/03_Chi contattare adesso.py",
+        "pages/03_Chi_contattare_adesso.py",
         label="Vai a Chi contattare adesso",
         icon="🎯"
     )
@@ -118,7 +118,7 @@ with right:
         """
     )
     st.page_link(
-        "pages/04_Ottimizzazione del premio.py",
+        "pages/04_Ottimizzazione_del_premio.py",
         label="Vai a Ottimizzazione premio",
         icon="💰"
     )
