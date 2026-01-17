@@ -9,7 +9,41 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🗺️ Dove investire ora — Priorità territoriali")
+# ---- GLOBAL CSS ----
+st.markdown(
+    """
+    <style>
+    /* Nasconde menu automatico */
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
+
+    /* Rimuove padding alto della sidebar */
+    section[data-testid="stSidebar"] > div:first-child {
+        padding-top: 0.1rem;
+    }
+
+    /* Rimuove margine automatico sopra il primo elemento */
+    section[data-testid="stSidebar"] img:first-of-type {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.sidebar.image("assets/logo.png", use_container_width=True)
+st.sidebar.markdown("")
+
+st.sidebar.page_link("app.py", label="Home")
+st.sidebar.page_link("pages/01_Profili_cliente.py", label="Profili cliente")
+st.sidebar.page_link("pages/02_Territorio.py", label="Territorio")
+st.sidebar.page_link("pages/03_Chi_contattare_adesso.py", label="Chi contattare adesso")
+
+st.sidebar.markdown("")
+
+st.title("Dove investire ora — Priorità territoriali")
 st.caption(
     "Capire dove concentrare l’attività commerciale combinando bisogno assicurativo, "
     "potenziale di mercato e capacità economica per Casa e Salute."
@@ -94,10 +128,10 @@ st.markdown(
 st.caption(
     "I comuni in alto combinano alto potenziale e bisogno assicurativo ancora scoperto."
 )
-
+MIN_CLIENTI = 10
 # ===== Grafico SINISTRA: focus prodotto selezionato (INVARIATO)
 top_comuni = (
-    df_ctx
+    df_ctx[df_ctx["n_clienti"] >= MIN_CLIENTI]
     .sort_values(score_col, ascending=False)
     .head(10)
 )
@@ -147,6 +181,16 @@ df_stack["Prodotto"] = df_stack["Prodotto"].map({
     "potential_score_casa": "Casa",
     "potential_score_salute": "Salute"
 })
+
+MIN_CLIENTI = 10
+
+df_stack = df_stack.merge(
+    df_ctx[["luogo_di_residenza", "n_clienti"]].drop_duplicates(),
+    on="luogo_di_residenza",
+    how="left"
+)
+
+df_stack = df_stack[df_stack["n_clienti"] >= MIN_CLIENTI]
 
 # top comuni per potenziale complessivo
 top_comuni_mix = (
@@ -287,8 +331,10 @@ cols_show = [
     "potential_score_salute",
 ]
 
+MIN_CLIENTI = 10
+
 df_table = (
-    df_ctx[cols_show]
+    df_ctx[df_ctx["n_clienti"] >= MIN_CLIENTI][cols_show]
     .sort_values(score_col, ascending=False)
     .head(30)
     .rename(columns={
@@ -314,6 +360,11 @@ df_table = df_table.replace({
 
 st.dataframe(
     df_table.style.format({
+        "Clienti attuali": "{:,.0f}",
+        "Penetrazione Casa": "{:.1%}",
+        "Penetrazione Salute": "{:.1%}",
+        "Bisogno Casa non coperto": "{:.1%}",
+        "Bisogno Salute non coperto": "{:.1%}",
         "Valore immobiliare medio (€)": "€ {:,.0f}",
         "Potenziale Casa": "{:.2f}",
         "Potenziale Salute": "{:.2f}",

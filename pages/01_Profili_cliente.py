@@ -5,9 +5,43 @@ import altair as alt
 from src.data import get_df
 
 st.set_page_config(
-    page_title="👥 Profili cliente",
+    page_title="Profili cliente",
     layout="wide"
 )
+
+# ---- GLOBAL CSS ----
+st.markdown(
+    """
+    <style>
+    /* Nasconde menu automatico */
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
+
+    /* Rimuove padding alto della sidebar */
+    section[data-testid="stSidebar"] > div:first-child {
+        padding-top: 0.1rem;
+    }
+
+    /* Rimuove margine automatico sopra il primo elemento */
+    section[data-testid="stSidebar"] img:first-of-type {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.sidebar.image("assets/logo.png", use_container_width=True)
+st.sidebar.markdown("")
+
+st.sidebar.page_link("app.py", label="Home")
+st.sidebar.page_link("pages/01_Profili_cliente.py", label="Profili cliente")
+st.sidebar.page_link("pages/02_Territorio.py", label="Territorio")
+st.sidebar.page_link("pages/03_Chi_contattare_adesso.py", label="Chi contattare adesso")
+
+st.sidebar.markdown("---")
 
 st.title("👥 CONOSCIAMO IL CLIENTE")
 st.caption("Qui trovi una lettura chiara dei tuoi clienti: chi sono, che valore hanno per Vita Sicura e come si comportano nel tempo. Usa questi profili per adattare il tuo approccio, capire su chi investire più tempo e costruire una relazione coerente con i bisogni reali dei tuoi clienti.")

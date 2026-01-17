@@ -13,7 +13,41 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🎯 CHI CONTATTARE ADESSO?")
+# ---- GLOBAL CSS ----
+st.markdown(
+    """
+    <style>
+    /* Nasconde menu automatico */
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
+
+    /* Rimuove padding alto della sidebar */
+    section[data-testid="stSidebar"] > div:first-child {
+        padding-top: 0.1rem;
+    }
+
+    /* Rimuove margine automatico sopra il primo elemento */
+    section[data-testid="stSidebar"] img:first-of-type {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.sidebar.image("assets/logo.png", use_container_width=True)
+st.sidebar.markdown("")
+
+st.sidebar.page_link("app.py", label="Home")
+st.sidebar.page_link("pages/01_Profili_cliente.py", label="Profili cliente")
+st.sidebar.page_link("pages/02_Territorio.py", label="Territorio")
+st.sidebar.page_link("pages/03_Chi_contattare_adesso.py", label="Chi contattare adesso")
+
+st.sidebar.markdown("")
+
+st.title("CHI CONTATTARE ADESSO?")
 st.caption(
     "Indicazioni operative su quali clienti contattare e perché, combinando valore economico, "
     "rischio di abbandono e opportunità commerciali. "
@@ -183,7 +217,7 @@ st.markdown("---")
 # 🧠 VITA — CONSULENTE AI
 # -------------------------------------------------
 st.markdown(
-    "<h2 style='text-align: center;'>🧠 Vita — Consulente AI</h2>",
+    "<h2 style='text-align: center;'> Vita — Consulente AI</h2>",
     unsafe_allow_html=True
 )
 st.caption(
