@@ -128,7 +128,7 @@ st.markdown(
 st.caption(
     "I comuni in alto combinano alto potenziale e bisogno assicurativo ancora scoperto."
 )
-MIN_CLIENTI = 10
+MIN_CLIENTI = 5
 # ===== Grafico SINISTRA: focus prodotto selezionato (INVARIATO)
 top_comuni = (
     df_ctx[df_ctx["n_clienti"] >= MIN_CLIENTI]
@@ -182,7 +182,7 @@ df_stack["Prodotto"] = df_stack["Prodotto"].map({
     "potential_score_salute": "Salute"
 })
 
-MIN_CLIENTI = 10
+MIN_CLIENTI = 5
 
 df_stack = df_stack.merge(
     df_ctx[["luogo_di_residenza", "n_clienti"]].drop_duplicates(),
@@ -249,8 +249,12 @@ st.caption(
     "Le aree in basso sono da monitorare."
 )
 
+MIN_CLIENTI = 0
 # Filtriamo rumore
-df_plot = df_ctx[df_ctx[score_col] > 0.05].copy()
+df_plot = df_ctx[
+    (df_ctx[score_col] > 0.05) &
+    (df_ctx["n_clienti"] >= MIN_CLIENTI)
+].copy()
 
 scatter = alt.Chart(df_plot).mark_circle(opacity=0.7).encode(
     x=alt.X(
@@ -331,7 +335,7 @@ cols_show = [
     "potential_score_salute",
 ]
 
-MIN_CLIENTI = 10
+MIN_CLIENTI = 5
 
 df_table = (
     df_ctx[df_ctx["n_clienti"] >= MIN_CLIENTI][cols_show]
